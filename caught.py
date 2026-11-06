@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import queue
+import secrets
 import threading
 import time
 import tkinter as tk
@@ -32,6 +33,10 @@ class App:
     def __init__(self, root):
         self.root = root
         self.messages = queue.Queue()
+        self.phone_messages = queue.Queue()
+        self.phone_watch = None
+        self.phone_code = None
+        self.phone_found = False
         self.camera_guard = threading.Lock()
         self.audio_guard = threading.Lock()
         self.serial = 0
@@ -75,6 +80,13 @@ class App:
                                 fg=CREAM, activebackground=INK, activeforeground=CREAM,
                                 relief="flat", padx=26, pady=13, cursor="hand2")
         self.action.pack()
+        self.phone_button = tk.Button(footer, text="PHONE WATCH", command=self.toggle_phone_watch,
+                                      font=("Segoe UI", 12, "bold"), bg=CREAM, fg=RED,
+                                      relief="groove", padx=18, pady=6, cursor="hand2")
+        self.phone_button.pack(pady=(8, 0))
+        self.phone_label = tk.Label(footer, text="", font=("Segoe UI", 11), bg=CREAM,
+                                    fg=INK, wraplength=800)
+        self.phone_label.pack(pady=(5, 0))
         self.exit_button = tk.Button(footer, text="EXIT  ·  Alt+F4", command=self.close,
                                       font=("Segoe UI", 11), bg=CREAM, fg=MUTED,
                                       relief="flat", padx=18, pady=7, cursor="hand2")
@@ -98,6 +110,7 @@ class App:
         self.subtitle.configure(wraplength=width)
         self.detail.configure(wraplength=width)
         self.photo_label.configure(wraplength=width)
+        self.phone_label.configure(wraplength=width)
 
     def set_state(self, value):
         self.state = value
@@ -110,6 +123,9 @@ class App:
         self.photo_label.configure(image="", text="One touch. One alarm. One very awkward photo.")
         self.detail.configure(text=error or "Arming visibly activates the webcam. Use with consenting teammates.")
         self.action.configure(text="ARM SYSTEM", command=self.arm, state="normal")
+        self.phone_button.configure(state="normal")
+        if self.phone_watch is None:
+            self.phone_label.configure(text="")
 
     def current(self, session):
         return not self.closed and self.session is session and not session.cancelled.is_set()
@@ -117,6 +133,9 @@ class App:
     def arm(self):
         if self.state != "IDLE":
             return
+        if self.phone_watch is not None:
+            self.stop_phone_watch()
+        self.phone_button.configure(state="disabled")
         self.serial += 1
         session = self.session = Session(self.serial)
         self.prepared = False
@@ -132,6 +151,55 @@ class App:
         self.tones = ((880, 140), (660, 140))
         threading.Thread(target=self.camera_worker, args=(session,), daemon=True).start()
         self.root.after(5000, lambda: self.camera_timeout(session))
+
+    def toggle_phone_watch(self):
+        if self.phone_watch is not None:
+            self.stop_phone_watch()
+            return
+        if self.state != "IDLE":
+            return
+        try:
+            from phone_watch import PhoneWatch
+        except ImportError:
+            self.phone_label.configure(text="Bluetooth support missing. Install requirements.txt and try again.")
+            return
+        self.phone_code = secrets.token_hex(4).upper()
+        self.phone_found = False
+        self.phone_watch = PhoneWatch(self.phone_code, lambda watch, kind, data:
+                                      self.phone_messages.put((watch, kind, data)))
+        self.phone_button.configure(text="STOP PHONE WATCH")
+        self.phone_label.configure(text=f"Phone code: {self.phone_code}   ·   Enter it in the Android app, then start lookout.")
+        self.phone_watch.start()
+
+    def stop_phone_watch(self):
+        watch = self.phone_watch
+        self.phone_watch = None
+        self.phone_found = False
+        if watch is not None:
+            watch.stop()
+        self.phone_button.configure(text="PHONE WATCH")
+        self.phone_label.configure(text="")
+
+    def poll_phone(self):
+        try:
+            while True:
+                watch, kind, data = self.phone_messages.get_nowait()
+                if watch is not self.phone_watch:
+                    continue
+                if kind == "near":
+                    self.phone_found = True
+                    self.phone_label.configure(text=f"Phone nearby · {self.phone_code} · Leave with your phone to arm.")
+                elif kind == "scanning" and not self.phone_found:
+                    self.phone_label.configure(text=f"Phone code: {self.phone_code} · Waiting for Android lookout nearby.")
+                elif kind == "away":
+                    self.stop_phone_watch()
+                    self.phone_label.configure(text="Phone signal weak or lost. Arming the laptop…")
+                    self.arm()
+                elif kind == "error":
+                    self.stop_phone_watch()
+                    self.phone_label.configure(text="Bluetooth scanning failed. Turn on Windows Bluetooth and try again.")
+        except queue.Empty:
+            pass
 
     def camera_timeout(self, session):
         if self.current(session) and self.phase == "camera":
@@ -359,6 +427,7 @@ class App:
     def poll(self):
         if self.closed:
             return
+        self.poll_phone()
         try:
             while True:
                 session, kind, data = self.messages.get_nowait()
@@ -438,6 +507,7 @@ class App:
     def close(self):
         if self.closed:
             return
+        self.stop_phone_watch()
         self.cancel_session()
         self.closed = True
         self.root.after_cancel(self.poll_id)
