@@ -1,0 +1,10 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const {initial,transition:t,status}=require('./model');
+test('coffee break locks; return requires explicit authentication',()=>{let s=t(initial(),'away');assert.equal(s.locked,true);s=t(s,'input');assert.equal(s.events[0].type,'warning');s=t(s,'near');assert.equal(s.locked,true);s=t(s,'authenticate');assert.equal(s.locked,false);});
+test('cannot authenticate while away or signal is lost',()=>{for(const action of ['away','lost']){let s=t(initial(),action);s=t(s,'authenticate');assert.equal(s.locked,true);}});
+test('pausing and unpairing never unlock an existing session',()=>{let s=t(initial(),'away');s=t(s,'toggle');assert.equal(s.locked,true);s=t(s,'unpair');assert.equal(s.locked,true);assert.equal(s.monitoring,false);assert.equal(s.paired,false);});
+test('signal loss locks, and resuming while away locks',()=>{assert.equal(t(initial(),'lost').locked,true);let s=t(initial(),'toggle');s=t(s,'away');assert.equal(s.locked,false);s=t(s,'toggle');assert.equal(s.locked,true);});
+test('no away alert near the device or when monitoring is paused',()=>{assert.equal(t(initial(),'input').events[0].type,'neutral');let s=t(initial(),'toggle');s=t(s,'away');s=t(s,'input');assert.equal(s.events[0].type,'neutral');});
+test('pairing cannot unlock a locked session, clear empties log',()=>{let s=t(initial(),'lock');s=t(s,'unpair');s=t(s,'pair');assert.equal(s.locked,true);assert.equal(s.paired,true);assert.equal(t(s,'clear').events.length,0);});
+test('transitions leave the previous state untouched and statuses reflect loss',()=>{const s=initial();t(s,'away');assert.equal(s.locked,false);assert.equal(s.events.length,0);assert.equal(status(t(s,'lost')).label,'Signal unavailable');});
