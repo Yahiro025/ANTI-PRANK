@@ -14,9 +14,9 @@ This is a comedic team project for OpenAI DevDays Exchange. It is not profession
 
 ## Project Status
 
-**Preparation only. The application has not been implemented.**
+The native MVP is implemented in `caught.py`: visible arming, a three-second countdown, global physical-input detection, a one-shot fullscreen reveal, an original two-tone alarm, and an in-memory webcam photo with a camera-failure fallback. Escape and the reset button cancel the session; the alarm also stops automatically after ten seconds.
 
-This repo contains the project context, dependency requirements, implementation guardrails, a 10-minute build plan, and acceptance tests. The next developer should start building immediately.
+No new automated tests were written, per the hackathon deadline. Syntax, dependency imports, and non-hardware Tk startup were checked. Camera, speakers, real global input, and the complete physical demo require rehearsal on the demo laptop using the acceptance checklist.
 
 ## Technical Requirements
 
@@ -44,9 +44,7 @@ python -m venv .venv
 
 The last command should open a small Tk window. Close it after checking.
 
-Python was not available on PATH during preparation. Dependencies, camera, sound, and global hooks have **not** been verified on this machine. No environment-ready claim is implied.
-
-After your friend implements `caught.py`, the intended launch command is:
+The local `.venv` contains the pinned dependencies. Launch from the repository root:
 
 ```powershell
 .\.venv\Scripts\python.exe caught.py
@@ -58,7 +56,7 @@ After your friend implements `caught.py`, the intended launch command is:
 2. Follow [the 10-minute build plan](docs/BUILD_PLAN.md).
 3. Verify against [the acceptance checklist](tests/ACCEPTANCE.md).
 
-[PRODUCT.md](PRODUCT.md) holds the product context. [DESIGN.md](DESIGN.md) records the confirmed visual direction. [The test README](tests/README.md) describes the automated checks to add during implementation.
+[PRODUCT.md](PRODUCT.md) holds the product context. [DESIGN.md](DESIGN.md) records the confirmed visual direction. [The test README](tests/README.md) describes the planned automated checks, deferred for this deadline.
 
 ## Privacy and Exit Controls
 
