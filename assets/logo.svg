@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 48 48" role="img" aria-labelledby="title description">
+  <title id="title">CAUGHT!</title>
+  <desc id="description">Watchful cream eyes on a red rounded square, matching the Android companion icon.</desc>
+  <rect width="48" height="48" rx="8" fill="#B92D24"/>
+  <path fill="#FFF4DE" d="M11,18a7,10 0,1 0,14 0a7,10 0,1 0,-14 0M26,18a7,10 0,1 0,14 0a7,10 0,1 0,-14 0"/>
+  <path fill="#251C19" d="M17,18a2,3 0,1 0,4 0a2,3 0,1 0,-4 0M32,18a2,3 0,1 0,4 0a2,3 0,1 0,-4 0"/>
+</svg>

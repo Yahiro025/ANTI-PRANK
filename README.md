@@ -1,89 +1,101 @@
-# CAUGHT! — A Windows Anti-Prank Laptop Trap
+<p align="center">
+  <img src="assets/logo.svg" alt="CAUGHT! watchful eyes logo" width="96" height="96">
+</p>
 
-## Context
+<h1 align="center">CAUGHT!</h1>
 
-Leave your laptop unattended. Someone presses a key, clicks, or scrolls. Instead of letting them prank you, the laptop pranks them.
+<p align="center">
+  <strong>One touch. One alarm. One very awkward photo.</strong><br>
+  A local Windows prank app with a fullscreen reveal.<br>
+  Arm it yourself, or let the optional Android companion arm it when your phone moves away.
+</p>
 
-An alarm goes off. A fullscreen warning appears. One webcam photo shows up alongside:
+<p align="center">
+  <a href="#quick-start">Quick Start</a> ·
+  <a href="#android-companion">Android companion</a> ·
+  <a href="#development">Development</a> ·
+  <a href="#license">License</a>
+</p>
 
-**CAUGHT IN 4K**
+<p align="center">
+  <a href="#quick-start"><img src="https://img.shields.io/badge/Windows-10%20%7C%2011-251C19?style=flat-square&amp;labelColor=3B3330" alt="Windows 10 or 11"></a>
+  <a href="#quick-start"><img src="https://img.shields.io/badge/Python-3.11%20%7C%203.12-251C19?style=flat-square&amp;labelColor=3B3330" alt="Python 3.11 or 3.12"></a>
+  <a href="#android-companion"><img src="https://img.shields.io/badge/Android-8.0%2B%20companion-251C19?style=flat-square&amp;labelColor=3B3330" alt="Optional Android 8.0+ companion"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-251C19?style=flat-square&amp;labelColor=3B3330" alt="MIT license"></a>
+</p>
 
-**BRO THOUGHT NOBODY WOULD NOTICE**
+## Quick Start
 
-This is a comedic team project for OpenAI DevDays Exchange. It is not professional security software. “4K” is a joke, not a capture specification.
-
-## Project Status
-
-The native MVP is implemented in `caught.py`: visible arming, a three-second countdown, global physical-input detection, a one-shot fullscreen reveal, an original two-tone alarm, and an in-memory webcam photo with a camera-failure fallback. Escape and the reset button cancel the session; the alarm also stops automatically after ten seconds.
-
-No new automated tests were written, per the hackathon deadline. Syntax, dependency imports, and non-hardware Tk startup were checked. The Android APK was built and its signature verified, but no Android device was available; the phone-to-laptop flow remains unverified. The laptop's Bluetooth radio reported powered off during the scanner check. Camera, speakers, real global input, and the complete physical demo require rehearsal on the demo laptop using the acceptance checklist.
-
-## Technical Requirements
-
-| Component | Choice |
-| --- | --- |
-| Platform | Windows 10/11; Windows 11 primary |
-| Language | Python 3.11 or 3.12 |
-| GUI | Tkinter |
-| Global input | pynput |
-| Phone signal | Android Bluetooth LE advertising; Bleak scanner on Windows |
-| Webcam | OpenCV |
-| Alarm | winsound |
-| Runtime services | None |
-
-Direct dependencies are `pynput`, `opencv-python`, and `bleak`; their supporting packages install automatically. No Pillow, browser, backend, database, account, cloud, or runtime API requests.
-
-## Setup
-
-Install Python 3.11 or 3.12 with Tcl/Tk support if needed. Then, from this folder in PowerShell:
+Requires **Windows 10/11** and **Python 3.11 or 3.12 with Tcl/Tk support**. From the project folder in PowerShell:
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -m tkinter
-```
-
-The last command should open a small Tk window. Close it after checking.
-
-The local `.venv` contains the pinned dependencies. Launch from the repository root:
-
-```powershell
 .\.venv\Scripts\python.exe caught.py
 ```
 
-## Android phone companion
+After setup, you can also double-click [run.cmd](run.cmd). Bluetooth is needed only for the optional phone companion.
 
-Download [CAUGHT-companion.apk](mobile/releases/CAUGHT-companion.apk) to an Android 8.0+ phone and open it to install; Android may ask you to allow installations from the app used to open the file. This is a locally signed development build, not a Play Store release.
+## How it works
 
-1. Turn on Bluetooth on the laptop and phone. Open CAUGHT! on the laptop and choose **PHONE WATCH**.
-2. Open CAUGHT! Companion on the phone, enter the laptop's eight-character code, grant Nearby devices permission, and tap **START LOOKOUT**. Allow notifications so you can see the lookout is running.
-3. Keep the phone close until the laptop says **Phone nearby**. Take the phone away. When its signal stays weak for roughly eight seconds or is missing for twelve seconds, the laptop starts its normal camera warmup and countdown. Input after it is armed triggers the usual reveal. The phone does not receive alerts in this version.
-4. Stop monitoring with **STOP PHONE WATCH** on the laptop or **STOP LOOKOUT** on the phone. Once the laptop starts arming, use **CANCEL**, **DISARM**, or Escape on the laptop. Phone return does not automatically disarm it.
+`IDLE → ARMING → ARMED → TRIGGERED`. The current state stays visible.
 
-Bluetooth strength is affected by walls, the phone model and radio interference; it is not an exact 10-meter measurement. Stopping the Android lookout or losing its signal can arm the laptop. The shared session code appears in Bluetooth advertisements and can be copied; this is a fun proximity trigger, not identity verification or a security lock. The phone must support Bluetooth LE advertising, and Android may stop the foreground service under device-specific power restrictions.
+1. **Arm.** Click **ARM SYSTEM**. The camera warms up, then a three-second countdown begins. Input is ignored until **ARMED**.
+2. **Trigger.** A global key press, mouse button press, or supported scroll triggers once. The alarm and fullscreen warning start without waiting for the photo.
+3. **Reveal.** One webcam photo appears with **CAUGHT IN 4K** and **BRO THOUGHT NOBODY WOULD NOTICE**. If capture fails, the warning reads **CAMERA FAILED, BUT YOU'RE STILL CAUGHT.** The alarm stops automatically after ten seconds.
+4. **Reset.** **STOP ALARM & RESET** or Escape while the app has focus stops the alarm, clears the photo, and returns to **IDLE**. **CANCEL** and **DISARM** reset during arming and monitoring. Alt+F4 exits.
 
-To rebuild the development APK on this machine, run `powershell -ExecutionPolicy Bypass -File mobile/build.ps1`; the new build is written to the ignored `mobile/build` directory. Copy it to `mobile/releases/CAUGHT-companion.apk` before committing a refreshed phone download. The script uses the local Android SDK, Android build-tools 36.0.0, platform android-37.0, and Android Studio's JDK. A development signing key is generated in the ignored `mobile/build` directory; retain it if you want future APKs to update an existing installation.
+## Android companion
 
-## Start Building
+The optional companion uses Bluetooth LE advertising to let the laptop detect when your phone moves away. It requires **Android 8.0+**, Bluetooth LE advertising support, and Bluetooth enabled on both devices.
 
-1. Read [AGENTS.md](AGENTS.md) for the implementation rules.
-2. Follow [the 10-minute build plan](docs/BUILD_PLAN.md).
-3. Verify against [the acceptance checklist](tests/ACCEPTANCE.md).
+1. Download [CAUGHT-companion.apk](mobile/releases/CAUGHT-companion.apk?raw=true) onto the phone and open it to install. Android may ask you to allow installations from the app opening the file. This is a locally signed development build.
+2. On the laptop, select **PHONE WATCH**. Enter its eight-character code in CAUGHT! Companion on the phone.
+3. Grant Nearby devices permission when requested, allow notifications, and tap **START LOOKOUT**. Keep the phone close until the laptop says **Phone nearby**.
+4. Take the phone away. A weak signal for roughly eight seconds, or a missing signal for twelve seconds, starts the laptop's normal camera warmup and countdown.
 
-[PRODUCT.md](PRODUCT.md) holds the product context. [DESIGN.md](DESIGN.md) records the confirmed visual direction. [The test README](tests/README.md) describes the planned automated checks, deferred for this deadline.
+**STOP PHONE WATCH** stops laptop monitoring; **STOP LOOKOUT** stops phone advertising. Stopping the phone lookout can also cause the laptop to arm because its signal disappears. Once arming begins, use **CANCEL**, **DISARM**, or Escape on the laptop. Returning with the phone does not disarm it, and the phone receives no alerts.
 
-## Privacy and Exit Controls
+## Tech Stack
 
-- Detect input events; never record keys or typed text.
-- Keep one photo in memory. Never automatically save or upload it.
-- Clear the photo on reset.
-- Never suppress input, shortcuts, or normal Windows controls.
-- Always provide a visible stop/reset button and Escape to reset.
-- Camera failure must still produce the alarm and warning.
-- Run a consensual demo. Arming uses a visible camera indicator; nothing attempts to hide it.
+| Component | Choice |
+| --- | --- |
+| Desktop | Python 3.11/3.12, Tkinter, winsound on Windows 10/11 |
+| Global input | pynput |
+| Webcam | OpenCV |
+| Phone signal | Android Java / Bluetooth LE advertising; Bleak scanner on Windows |
+| Runtime services | None; no backend, database, accounts, cloud, or internet API calls |
 
-## Scope
+Direct Python dependencies are `pynput`, `opencv-python`, and `bleak`, pinned in [requirements.txt](requirements.txt). The desktop uses the standard library for everything else, without Pillow or elevation.
 
-One local desktop app and an optional Android proximity companion. Four desktop states. One trigger per session. A three-second countdown. A camera fallback. A funny reveal.
+## Privacy and controls
 
-Do not add packaging, installers, startup services, face recognition, owner identification, settings panels, or persistence during the demo build.
+- Input callbacks detect events without recording typed characters or keyboard history.
+- One photo stays in memory and is cleared on reset or exit. No photos are saved or uploaded, and no video is recorded.
+- Input and system shortcuts remain available. The app does not lock Windows or change speaker volume or mute settings.
+- Camera use stays visible. Run a consenting demo; there is no hidden monitoring or startup persistence.
+
+## Development
+
+[caught.py](caught.py) contains the native app; [phone_watch.py](phone_watch.py) handles the optional Bluetooth watch. Android source is built with [mobile/build.ps1](mobile/build.ps1), using the Android SDK and JDK configuration in that script.
+
+The separate [NICE TRY prototype](prototype/README.md) is a browser design demo with simulated phone and locking behavior. Run its behavior tests from the repository root with Node.js; no packages need installing:
+
+```powershell
+node --test prototype/model.test.js
+```
+
+These tests cover the browser prototype only. See the [native test plan](tests/README.md) for mocked checks to add and the [Windows acceptance checklist](tests/ACCEPTANCE.md) for physical-device rehearsal.
+
+## Known Limitations
+
+- Camera, sound, real global input, and the Android-to-Windows flow still need physical-device verification. Automated native-app tests have not been added; the browser prototype has its own behavior tests.
+- Mouse movement is not monitored. Scroll detection depends on the events Windows reports, including trackpad support.
+- Bluetooth strength varies with walls, radios, and phone power restrictions. It is not an exact distance measurement. The advertised session code can be copied and does not verify identity.
+- This is a comedic demo, not security software. It cannot identify the owner. “4K” is a joke, not a capture specification.
+
+## License
+
+Project code is licensed under the [MIT License](LICENSE).
+
+The prototype bundles **Bricolage Grotesque** by the Bricolage Grotesque Project Authors under the [SIL Open Font License 1.1](prototype/assets/FONT-LICENSE.txt). That license applies to the font.
