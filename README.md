@@ -51,16 +51,22 @@ The local `.venv` contains the pinned dependencies. Launch from the repository r
 .\.venv\Scripts\python.exe caught.py
 ```
 
+## Event mode and design
+
+The native apps use the approved Little lookout design. **Silent mode starts enabled** on the laptop: uncheck it before arming if you want the alarm. The sound choice applies to the next session; visuals and the visible webcam still work in silent mode. Restart the laptop app to load the new design.
+
+The shared font is bundled in `assets/` with its license; it requires no system installation. The historical `prototype/` is a different concept, not the native product behavior.
+
 ## Android phone companion
 
 Download [CAUGHT-companion.apk](mobile/releases/CAUGHT-companion.apk) to an Android 8.0+ phone and open it to install; Android may ask you to allow installations from the app used to open the file. This is a locally signed development build, not a Play Store release.
 
 1. Turn on Bluetooth on the laptop and phone. Open CAUGHT! on the laptop and choose **PHONE WATCH**.
 2. Open CAUGHT! Companion on the phone, enter the laptop's eight-character code, grant Nearby devices permission, and tap **START LOOKOUT**. Allow notifications so you can see the lookout is running.
-3. Keep the phone close until the laptop says **Phone nearby**. Take the phone away. When its signal stays weak for roughly eight seconds or is missing for twelve seconds, the laptop starts its normal camera warmup and countdown. Input after it is armed triggers the usual reveal. The phone does not receive alerts in this version.
+3. Keep the phone very close until the laptop says **Phone nearby**. Take the phone away. With the current very-short-range demo setting, a weak signal for about 1.5 seconds or a missing signal for three seconds starts the normal camera warmup and countdown. Input after it is armed triggers the usual reveal. The phone does not receive alerts in this version.
 4. Stop monitoring with **STOP PHONE WATCH** on the laptop or **STOP LOOKOUT** on the phone. Once the laptop starts arming, use **CANCEL**, **DISARM**, or Escape on the laptop. Phone return does not automatically disarm it.
 
-Bluetooth strength is affected by walls, the phone model and radio interference; it is not an exact 10-meter measurement. Stopping the Android lookout or losing its signal can arm the laptop. The shared session code appears in Bluetooth advertisements and can be copied; this is a fun proximity trigger, not identity verification or a security lock. The phone must support Bluetooth LE advertising, and Android may stop the foreground service under device-specific power restrictions.
+Bluetooth strength is affected by walls, the phone model and radio interference; this very-short-range setting is not an exact quarter-meter measurement. Stopping the Android lookout or losing its signal can arm the laptop. The shared session code appears in Bluetooth advertisements and can be copied; this is a fun proximity trigger, not identity verification or a security lock. The phone must support Bluetooth LE advertising, and Android may stop the foreground service under device-specific power restrictions.
 
 To rebuild the development APK on this machine, run `powershell -ExecutionPolicy Bypass -File mobile/build.ps1`; the new build is written to the ignored `mobile/build` directory. Copy it to `mobile/releases/CAUGHT-companion.apk` before committing a refreshed phone download. The script uses the local Android SDK, Android build-tools 36.0.0, platform android-37.0, and Android Studio's JDK. A development signing key is generated in the ignored `mobile/build` directory; retain it if you want future APKs to update an existing installation.
 

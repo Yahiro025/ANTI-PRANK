@@ -8,17 +8,36 @@ import time
 import tkinter as tk
 from dataclasses import dataclass, field
 from tkinter import messagebox
+from pathlib import Path
+
+
+def load_display_font():
+    """Register the bundled brand face privately; no installation or elevation."""
+    try:
+        import ctypes
+        font = Path(__file__).resolve().parent / "assets" / "bricolage.ttf"
+        if ctypes.windll.gdi32.AddFontResourceExW(str(font), 0x10, 0):
+            return "Bricolage Grotesque 14pt"
+    except (AttributeError, OSError):
+        pass
+    return "Segoe UI"
+
+
+DISPLAY_FONT = load_display_font()
 
 CREAM = "#FFF4DE"
 INK = "#251C19"
 RED = "#B92D24"
 MUTED = "#6B574C"
+PAPER = "#FFFBF2"
+SAND = "#F3E1C4"
 CAMERA_FAILED = "CAMERA FAILED, BUT YOU'RE STILL CAUGHT."
 
 
 @dataclass
 class Session:
     number: int
+    sound_enabled: bool = False
     cancelled: threading.Event = field(default_factory=threading.Event)
     camera_stop: threading.Event = field(default_factory=threading.Event)
     capture: threading.Event = field(default_factory=threading.Event)
@@ -27,6 +46,35 @@ class Session:
     accepting: bool = False
     fired: bool = False
     listeners: list = field(default_factory=list)
+
+
+class Lookout(tk.Canvas):
+    """The same small, geometric character used by the Android companion."""
+
+    def __init__(self, parent):
+        super().__init__(parent, width=160, height=144, bg=CREAM,
+                         highlightthickness=0, takefocus=False)
+        self.expression = "IDLE"
+        self.bind("<Configure>", lambda _event: self.draw())
+
+    def draw(self):
+        self.delete("all")
+        size = min(self.winfo_width(), self.winfo_height())
+        scale = size / 100
+        x = (self.winfo_width() - size) / 2
+        def oval(a, b, c, d, color):
+            self.create_oval(x+a*scale, b*scale, x+c*scale, d*scale,
+                             fill=color, outline="")
+        oval(27, 82, 45, 94, "#8A1E17")
+        oval(55, 82, 73, 94, "#8A1E17")
+        oval(14, 10, 86, 86, RED)
+        oval(27, 22, 73, 68, CREAM)
+        gaze = 7 if self.expression == "IDLE" else -5 if self.expression == "ARMING" else 0
+        radius = 7 if self.expression == "ARMING" else 10
+        oval(50+gaze-radius, 45-radius, 50+gaze+radius, 45+radius, INK)
+        oval(46+gaze, 38, 51+gaze, 43, PAPER)
+        oval(23, 63, 33, 69, "#C9453B")
+        oval(67, 63, 77, 69, "#C9453B")
 
 
 class App:
@@ -48,8 +96,8 @@ class App:
         self.photo = None
         self.closed = False
         root.title("CAUGHT! — The anti-prank prank")
-        root.geometry("940x720")
-        root.minsize(620, 540)
+        root.geometry("960x760")
+        root.minsize(680, 640)
         root.configure(bg=CREAM)
         root.protocol("WM_DELETE_WINDOW", self.close)
         root.bind("<Escape>", lambda _event: self.reset())
@@ -58,63 +106,140 @@ class App:
         self.poll_id = root.after(25, self.poll)
 
     def build_ui(self):
-        self.shell = tk.Frame(self.root, bg=CREAM, padx=30, pady=22)
+        self.shell = tk.Frame(self.root, bg=CREAM, padx=32, pady=24)
         self.shell.pack(fill="both", expand=True)
-        top = tk.Frame(self.shell, bg=CREAM)
-        top.pack(fill="x")
-        tk.Label(top, text="CAUGHT!", font=("Segoe UI", 19, "bold"), bg=CREAM,
-                 fg=INK).pack(side="left")
-        self.state_label = tk.Label(top, font=("Segoe UI", 12, "bold"), bg=CREAM,
-                                    fg=RED)
+        self.shell.columnconfigure(0, weight=1)
+        self.shell.rowconfigure(1, weight=1)
+        self.top = tk.Frame(self.shell, bg=CREAM)
+        self.top.grid(row=0, column=0, sticky="ew", pady=(0, 8))
+        self.brand = tk.Label(self.top, text="CAUGHT!", font=(DISPLAY_FONT, 20, "bold"),
+                              bg=CREAM, fg=INK)
+        self.brand.pack(side="left")
+        self.state_label = tk.Label(self.top, font=("Segoe UI", 11, "bold"),
+                                    padx=12, pady=6, bg=SAND, fg=INK)
         self.state_label.pack(side="right")
-        self.heading = tk.Label(self.shell, bg=CREAM, fg=INK,
-                                font=("Segoe UI", 40, "bold"), wraplength=850)
-        self.heading.pack(pady=(24, 5))
-        self.subtitle = tk.Label(self.shell, bg=CREAM, fg=MUTED,
-                                 font=("Segoe UI", 15), wraplength=840)
-        self.subtitle.pack(pady=(0, 12))
-        # Keep the stop/exit controls outside the expanding image area.
-        footer = tk.Frame(self.shell, bg=CREAM)
-        footer.pack(side="bottom", fill="x", pady=(12, 0))
-        self.action = tk.Button(footer, font=("Segoe UI", 17, "bold"), bg=RED,
-                                fg=CREAM, activebackground=INK, activeforeground=CREAM,
-                                relief="flat", padx=26, pady=13, cursor="hand2")
-        self.action.pack()
-        self.phone_button = tk.Button(footer, text="PHONE WATCH", command=self.toggle_phone_watch,
-                                      font=("Segoe UI", 12, "bold"), bg=CREAM, fg=RED,
-                                      relief="groove", padx=18, pady=6, cursor="hand2")
-        self.phone_button.pack(pady=(8, 0))
-        self.phone_label = tk.Label(footer, text="", font=("Segoe UI", 11), bg=CREAM,
-                                    fg=INK, wraplength=800)
-        self.phone_label.pack(pady=(5, 0))
-        self.exit_button = tk.Button(footer, text="EXIT  ·  Alt+F4", command=self.close,
-                                      font=("Segoe UI", 11), bg=CREAM, fg=MUTED,
-                                      relief="flat", padx=18, pady=7, cursor="hand2")
-        self.exit_button.pack()
-        tk.Label(footer, text="Esc resets · No keys recorded · Photo stays in memory",
-                 font=("Segoe UI", 10), bg=CREAM, fg=MUTED).pack()
-        self.photo_label = tk.Label(self.shell, bg=CREAM, fg=RED,
-                                    font=("Segoe UI", 17, "bold"), wraplength=760)
-        self.photo_label.pack(fill="both", expand=True, pady=6)
+        self.stage_host = tk.Frame(self.shell, bg=CREAM)
+        self.stage_host.grid(row=1, column=0, sticky="nsew")
+        self.viewport = tk.Canvas(self.stage_host, bg=CREAM, highlightthickness=0,
+                                  takefocus=True)
+        self.viewport.pack(side="left", fill="both", expand=True)
+        self.scrollbar = tk.Scrollbar(self.stage_host, command=self.viewport.yview,
+                                      bg=CREAM, troughcolor=CREAM, width=12)
+        self.scrollbar.pack(side="right", fill="y")
+        self.viewport.configure(yscrollcommand=self.scrollbar.set)
+        self.stage = tk.Frame(self.viewport, bg=CREAM)
+        self.stage_window = self.viewport.create_window(0, 0, window=self.stage, anchor="nw")
+        self.viewport.bind("<Configure>", lambda event: self.fit_stage(event.width, event.height))
+        self.stage.bind("<Configure>", lambda _event: self.fit_stage())
+        self.root.bind("<MouseWheel>", lambda event: self.viewport.yview_scroll(
+            -int(event.delta / 120), "units"))
+        self.viewport.bind("<Up>", lambda _event: self.viewport.yview_scroll(-1, "units"))
+        self.viewport.bind("<Down>", lambda _event: self.viewport.yview_scroll(1, "units"))
+        self.stage.columnconfigure(0, weight=1)
+        self.stage.rowconfigure(3, weight=1)
+        self.mascot = Lookout(self.stage)
+        self.mascot.grid(row=0, column=0, pady=(0, 8))
+        self.heading = tk.Label(self.stage, bg=CREAM, fg=INK,
+                                font=(DISPLAY_FONT, 38, "bold"), wraplength=800)
+        self.heading.grid(row=1, column=0, pady=(0, 8))
+        self.subtitle = tk.Label(self.stage, bg=CREAM, fg=MUTED,
+                                 font=("Segoe UI", 13), wraplength=760)
+        self.subtitle.grid(row=2, column=0, pady=(0, 12))
+        self.photo_label = tk.Label(self.stage, bg=CREAM, fg=RED, padx=16, pady=8,
+                                    font=("Segoe UI", 13, "bold"), wraplength=720)
+        self.photo_label.grid(row=3, column=0, sticky="nsew", pady=(0, 8))
         self.detail = tk.Label(self.shell, bg=CREAM, fg=MUTED,
-                               font=("Segoe UI", 12), wraplength=820)
-        self.detail.pack(side="bottom", pady=5)
+                               font=("Segoe UI", 11), wraplength=760)
+        self.detail.grid(row=2, column=0, pady=(8, 12))
+        self.controls = tk.Frame(self.shell, bg=CREAM)
+        self.controls.grid(row=3, column=0)
+        self.action = tk.Button(self.controls, font=("Segoe UI", 14, "bold"), bg=RED,
+                                fg=CREAM, activebackground=INK, activeforeground=CREAM,
+                                highlightcolor=INK, highlightthickness=2, highlightbackground=CREAM,
+                                relief="flat", width=26, padx=16, pady=12, cursor="hand2")
+        self.action.grid(row=0, column=0, sticky="ew")
+        self.phone_button = tk.Button(self.controls, text="PHONE WATCH", command=self.toggle_phone_watch,
+                                      font=("Segoe UI", 11, "bold"), bg=CREAM, fg=INK,
+                                      activebackground=SAND, relief="flat", pady=10,
+                                      highlightcolor=RED, highlightbackground=CREAM,
+                                      highlightthickness=2, cursor="hand2")
+        self.phone_button.grid(row=1, column=0, sticky="ew", pady=(4, 0))
+        self.code_label = tk.Label(self.controls, bg=CREAM, fg=RED,
+                                   font=("Consolas", 23, "bold"))
+        self.code_label.grid(row=2, column=0)
+        self.code_label.grid_remove()
+        self.phone_label = tk.Label(self.controls, text="", font=("Segoe UI", 11), bg=CREAM,
+                                    fg=INK, wraplength=720)
+        self.phone_label.grid(row=3, column=0, pady=(0, 4))
+        self.silent = tk.BooleanVar(value=True)
+        self.sound_control = tk.Checkbutton(self.controls, text="Silent mode (no alarm sound)",
+                                            variable=self.silent, bg=CREAM, fg=MUTED,
+                                            activebackground=CREAM, selectcolor=PAPER,
+                                            font=("Segoe UI", 11), pady=6)
+        self.sound_control.grid(row=4, column=0)
+        self.bottom = tk.Frame(self.shell, bg=CREAM)
+        self.bottom.grid(row=4, column=0, sticky="ew", pady=(12, 0))
+        self.bottom.columnconfigure(0, weight=1)
+        self.privacy = tk.Label(self.bottom, text="No keys recorded  /  Photo stays in memory",
+                                font=("Segoe UI", 10), bg=CREAM, fg=MUTED)
+        self.privacy.grid(row=0, column=0, sticky="w")
+        self.exit_button = tk.Button(self.bottom, text="Exit  /  Alt+F4", command=self.close,
+                                      font=("Segoe UI", 10), bg=CREAM, fg=MUTED,
+                                      relief="flat", padx=12, pady=8, cursor="hand2")
+        self.exit_button.grid(row=0, column=1, sticky="e")
         self.root.bind("<Configure>", self.resize_text)
+
+    def fit_stage(self, width=None, height=None):
+        width = width or self.viewport.winfo_width()
+        height = height or self.viewport.winfo_height()
+        self.viewport.itemconfigure(self.stage_window, width=width,
+                                    height=max(height, self.stage.winfo_reqheight()))
+        self.viewport.configure(scrollregion=self.viewport.bbox("all"))
 
     def resize_text(self, event):
         if event.widget is not self.root:
             return
         width = max(300, event.width - 80)
         self.heading.configure(wraplength=width,
-                               font=("Segoe UI", max(26, min(64, event.width // 18)), "bold"))
-        self.subtitle.configure(wraplength=width)
-        self.detail.configure(wraplength=width)
-        self.photo_label.configure(wraplength=width)
-        self.phone_label.configure(wraplength=width)
+                               font=(DISPLAY_FONT, max(28, min(44, event.width // 24)), "bold"))
+        for label in (self.subtitle, self.detail, self.photo_label, self.phone_label):
+            label.configure(wraplength=width)
+        size = 64 if event.height < 700 else 104
+        self.mascot.configure(width=size+16, height=size)
 
     def set_state(self, value):
         self.state = value
         self.state_label.configure(text=f"STATE: {value}")
+        self.mascot.expression = value
+        self.mascot.draw()
+        triggered = value == "TRIGGERED"
+        bg, fg = (RED, CREAM) if triggered else (CREAM, INK)
+        for widget in (self.root, self.shell, self.top, self.stage_host,
+                       self.viewport, self.stage, self.controls, self.bottom):
+            widget.configure(bg=bg)
+        for label in (self.brand, self.heading, self.subtitle, self.detail, self.privacy):
+            label.configure(bg=bg, fg=fg if triggered else MUTED if label in
+                            (self.subtitle, self.detail, self.privacy) else INK)
+        self.state_label.configure(bg=CREAM if triggered else SAND, fg=INK)
+        self.scrollbar.configure(bg=bg, troughcolor=bg)
+        self.exit_button.configure(bg=bg, fg=fg)
+        self.action.configure(bg=CREAM if triggered else INK if value == "ARMED" else RED,
+                              fg=INK if triggered else CREAM, highlightbackground=bg)
+        self.photo_label.configure(bg=PAPER if triggered else CREAM, fg=INK if triggered else RED)
+        if triggered:
+            self.viewport.yview_moveto(0)
+            self.mascot.grid_remove()
+            self.phone_button.grid_remove()
+            self.phone_label.grid_remove()
+            self.sound_control.grid_remove()
+            self.code_label.grid_remove()
+        else:
+            self.viewport.yview_moveto(0)
+            self.mascot.grid()
+            self.phone_button.grid()
+            self.phone_label.grid()
+            self.sound_control.grid()
+        self.sound_control.configure(state="normal" if value == "IDLE" else "disabled")
 
     def show_idle(self, error=""):
         self.set_state("IDLE")
@@ -137,7 +262,7 @@ class App:
             self.stop_phone_watch()
         self.phone_button.configure(state="disabled")
         self.serial += 1
-        session = self.session = Session(self.serial)
+        session = self.session = Session(self.serial, sound_enabled=not self.silent.get())
         self.prepared = False
         self.photo_pending = False
         self.phase = "camera"
@@ -164,6 +289,8 @@ class App:
             self.phone_label.configure(text="Bluetooth support missing. Install requirements.txt and try again.")
             return
         self.phone_code = secrets.token_hex(4).upper()
+        self.code_label.configure(text=self.phone_code)
+        self.code_label.grid()
         self.phone_found = False
         self.phone_watch = PhoneWatch(self.phone_code, lambda watch, kind, data:
                                       self.phone_messages.put((watch, kind, data)))
@@ -179,6 +306,7 @@ class App:
             watch.stop()
         self.phone_button.configure(text="PHONE WATCH")
         self.phone_label.configure(text="")
+        self.code_label.grid_remove()
 
     def poll_phone(self):
         try:
@@ -375,6 +503,8 @@ class App:
                 self.camera_guard.release()
 
     def alarm_worker(self, session):
+        if not session.sound_enabled:
+            return
         import winsound
         # Prevent overlap with a final short tone from a cancelled session.
         while not session.alarm_stop.is_set():
@@ -405,14 +535,16 @@ class App:
         self.root.attributes("-fullscreen", True)
         self.root.lift()
         self.root.focus_force()
-        self.heading.configure(text="CAUGHT IN 4K", fg=RED)
+        self.heading.configure(text="CAUGHT IN 4K", fg=CREAM)
         self.subtitle.configure(text="BRO THOUGHT NOBODY WOULD NOTICE")
         self.action.configure(text="STOP ALARM & RESET", command=self.reset)
-        self.detail.configure(text="The 4K part is a joke. The awkwardness is real. Alarm stops after 10 seconds.")
+        self.detail.configure(text="Silent reveal. No alarm sound. Esc resets." if not session.sound_enabled
+                              else "The 4K part is a joke. Alarm stops after 10 seconds. Esc resets.")
         self.photo_label.configure(text="Getting your reaction…" if self.prepared else CAMERA_FAILED)
         threading.Thread(target=self.alarm_worker, args=(session,), daemon=True).start()
-        self.capture_size = (max(220, min(960, self.root.winfo_screenwidth() - 100)),
-                             max(100, min(540, self.root.winfo_screenheight() - 380)))
+        self.root.update_idletasks()
+        self.capture_size = (max(1, self.photo_label.winfo_width() - 32),
+                             max(1, self.photo_label.winfo_height() - 16))
         if self.prepared:
             self.photo_pending = True
             session.capture.set()
@@ -449,7 +581,7 @@ class App:
                             session.accepting = True
                     self.phase = "watching"
                     self.set_state("ARMED")
-                    self.heading.configure(text="System Armed.")
+                    self.heading.configure(text="System armed")
                     self.subtitle.configure(text="This laptop is being watched. Don't touch it.")
                     self.photo_label.configure(text="Go on. Act natural.")
                     self.action.configure(text="DISARM", command=self.reset)
@@ -515,6 +647,11 @@ class App:
 
 
 def main():
+    try:
+        import ctypes
+        ctypes.windll.shcore.SetProcessDpiAwareness(1)
+    except (AttributeError, OSError):
+        pass
     root = tk.Tk()
     root.withdraw()
     try:

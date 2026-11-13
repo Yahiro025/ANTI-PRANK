@@ -1,3 +1,5 @@
+> Historical concept: NICE TRY. This browser demo includes simulated locking flows that are not implemented by CAUGHT! Use the native desktop and Android apps described in the root README for the current product.
+
 # NICE TRY.
 
 Go get coffee. Keep your dignity.

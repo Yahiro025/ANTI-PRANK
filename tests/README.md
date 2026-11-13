@@ -2,7 +2,7 @@
 
 ## Current Status
 
-The application has not been built. There are no runnable application tests yet, and no test pass is claimed. This folder defines what the builder should verify without inventing an interface or adding placeholder tests that always pass.
+The native desktop application and Android companion are built. There is no committed automated application test suite. During the Little lookout redesign, one-off native Tk checks verified control visibility at 960?760 and 680?640, silent reveal with zero Beep calls, and reset cleanup. Those checks do not replace the hardware acceptance checklist below. No real webcam, audio or OS input was used in those checks.
 
 ## Automated Checks to Add During Implementation
 

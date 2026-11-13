@@ -39,13 +39,17 @@ class PhoneWatch:
             signal = advertisement.rssi
             if signal is None:
                 return
-            if signal >= -76:
+            # Very short-range demo setting. BLE RSSI is device- and
+            # environment-dependent, so this is a signal threshold, not meters.
+            if not self.near:
+                if signal < -45:
+                    return
+                self.near = True
+                self.notify(self, "near", None)
+            elif signal >= -45:
                 self.weak_since = None
-                if not self.near:
-                    self.near = True
-                    self.notify(self, "near", None)
-            elif signal < -82:
-                if self.near and self.weak_since is None:
+            elif signal < -51:
+                if self.weak_since is None:
                     self.weak_since = now
             else:
                 self.weak_since = None
@@ -54,8 +58,8 @@ class PhoneWatch:
             self.notify(self, "scanning", None)
             while not self.cancelled.is_set():
                 now = time.monotonic()
-                if self.near and ((self.last_seen is not None and now - self.last_seen >= 12) or
-                                  (self.weak_since is not None and now - self.weak_since >= 8)):
+                if self.near and ((self.last_seen is not None and now - self.last_seen >= 3) or
+                                  (self.weak_since is not None and now - self.weak_since >= 1.5)):
                     self.notify(self, "away", None)
                     return
                 await asyncio.sleep(0.25)

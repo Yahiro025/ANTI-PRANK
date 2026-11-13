@@ -12,7 +12,7 @@ New-Item -ItemType Directory -Force $build, $classes, $dex | Out-Null
 function Check-Exit { if ($LASTEXITCODE -ne 0) { throw "Build command failed (exit $LASTEXITCODE)" } }
 & "$toolRoot\aapt2.exe" compile --dir "$mobile\app\src\main\res" -o "$build\res.zip"
 Check-Exit
-& "$toolRoot\aapt2.exe" link -I $androidJar --manifest "$mobile\app\src\main\AndroidManifest.xml" --min-sdk-version 26 --target-sdk-version 35 --version-code 1 --version-name '0.1' -o "$build\unsigned.apk" "$build\res.zip"
+& "$toolRoot\aapt2.exe" link -I $androidJar -A "$mobile\..\assets" --manifest "$mobile\app\src\main\AndroidManifest.xml" --min-sdk-version 26 --target-sdk-version 35 --version-code 2 --version-name '0.2' -o "$build\unsigned.apk" "$build\res.zip"
 Check-Exit
 $sourceFiles = Get-ChildItem "$mobile\app\src\main\java" -Filter '*.java' -Recurse | ForEach-Object { $_.FullName }
 & "$java\bin\javac.exe" --release 8 -classpath $androidJar -d $classes $sourceFiles

@@ -18,6 +18,7 @@ import java.util.UUID;
 
 public final class BeaconService extends Service {
     static volatile boolean running = false;
+    static volatile boolean broadcasting = false;
     static volatile String status = "Lookout is off.";
     private static final String STOP = "com.caught.companion.STOP";
     private BluetoothLeAdvertiser advertiser;
@@ -48,7 +49,11 @@ public final class BeaconService extends Service {
             if (advertiser == null) { fail("Bluetooth advertising is unavailable. Check Bluetooth and try again."); return START_NOT_STICKY; }
             ParcelUuid uuid = new ParcelUuid(UUID.fromString(code.toLowerCase() + "-cabe-4aed-9c0d-0123456789ab"));
             callback = new AdvertiseCallback() {
-                @Override public void onStartSuccess(AdvertiseSettings settings) { status = "Lookout is on. Keep this notification active while you're away."; }
+                @Override public void onStartSuccess(AdvertiseSettings settings) {
+                    if (!running) return;
+                    broadcasting = true;
+                    status = "Lookout is on. Your laptop can detect this phone nearby.";
+                }
                 @Override public void onStartFailure(int errorCode) { fail("Couldn't start Bluetooth advertising (" + errorCode + "). Try restarting Bluetooth."); }
             };
             advertiser.startAdvertising(new AdvertiseSettings.Builder().setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY).setConnectable(false).setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_MEDIUM).build(),
@@ -56,11 +61,11 @@ public final class BeaconService extends Service {
         } catch (RuntimeException error) { fail("Couldn't start the lookout. Check Bluetooth permissions and try again."); }
         return START_NOT_STICKY;
     }
-    private void fail(String message) { status = message; running = false; stopSelf(); }
+    private void fail(String message) { status = message; broadcasting = false; running = false; stopSelf(); }
     @Override public void onDestroy() {
         if (advertiser != null && callback != null) { try { advertiser.stopAdvertising(callback); } catch (RuntimeException ignored) {} }
         if (running) status = "Lookout is off.";
-        running = false; advertiser = null; callback = null;
+        broadcasting = false; running = false; advertiser = null; callback = null;
         stopForeground(true);
         super.onDestroy();
     }
